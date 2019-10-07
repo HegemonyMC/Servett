@@ -1,0 +1,38 @@
+From e69d6b23144c35c845080712ed19b2fd6fc5e42c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 12:44:41 +0200
+Subject: [PATCH] Rebrand API
+
+
+diff --git a/pom.xml b/pom.xml
+index 5088c331..09fe0926 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -3,18 +3,18 @@
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     <modelVersion>4.0.0</modelVersion>
+     <parent>
+-        <groupId>com.destroystokyo.paper</groupId>
+-        <artifactId>paper-parent</artifactId>
++        <groupId>xyz.hegemony</groupId>
++        <artifactId>servett-parent</artifactId>
+         <version>dev-SNAPSHOT</version>
+     </parent>
+ 
+-    <groupId>com.destroystokyo.paper</groupId>
+-    <artifactId>paper-api</artifactId>
++    <groupId>xyz.hegemony</groupId>
++    <artifactId>servett-api</artifactId>
+     <version>1.14.4-R0.1-SNAPSHOT</version>
+     <packaging>jar</packaging>
+ 
+-    <name>Paper-API</name>
+-    <url>https://github.com/PaperMC/Paper</url>
++    <name>Servett-API</name>
++    <url>https://github.com/HegemonyMC/Servett</url>
+     <description>An enhanced plugin API for Minecraft servers.</description>
+ 
+     <properties>
+-- 
+2.20.1
+

@@ -1,0 +1,47 @@
+From a690e8903ccb8de736bc5ff0e3701ccfb641ecc2 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 12:48:40 +0200
+Subject: [PATCH] Server branding
+
+
+diff --git a/pom.xml b/pom.xml
+index beda5dc8a..ac794550c 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,10 +1,10 @@
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     <modelVersion>4.0.0</modelVersion>
+-    <artifactId>paper</artifactId>
++    <artifactId>servett</artifactId>
+     <packaging>jar</packaging>
+     <version>1.14.4-R0.1-SNAPSHOT</version>
+-    <name>Paper</name>
++    <name>Servett</name>
+     <url>https://papermc.io</url>
+ 
+     <properties>
+@@ -21,16 +21,16 @@
+     </properties>
+ 
+     <parent>
+-        <groupId>com.destroystokyo.paper</groupId>
+-        <artifactId>paper-parent</artifactId>
++        <groupId>xyz.hegemony</groupId>
++        <artifactId>servett-parent</artifactId>
+         <version>dev-SNAPSHOT</version>
+         <relativePath>../pom.xml</relativePath>
+     </parent>
+ 
+     <dependencies>
+         <dependency>
+-            <groupId>com.destroystokyo.paper</groupId>
+-            <artifactId>paper-api</artifactId>
++            <groupId>xyz.hegemony</groupId>
++            <artifactId>servett-api</artifactId>
+             <version>${project.version}</version>
+             <scope>compile</scope>
+         </dependency>
+-- 
+2.20.1
+

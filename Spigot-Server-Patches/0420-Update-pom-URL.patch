@@ -1,0 +1,22 @@
+From ec5473167e4bc1601356aefe5d7bb5ab94ed7559 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 13:16:45 +0200
+Subject: [PATCH] Update pom URL
+
+
+diff --git a/pom.xml b/pom.xml
+index ac794550c..9510555ce 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -5,7 +5,7 @@
+     <packaging>jar</packaging>
+     <version>1.14.4-R0.1-SNAPSHOT</version>
+     <name>Servett</name>
+-    <url>https://papermc.io</url>
++    <url>https://hegemony.xyz</url>
+ 
+     <properties>
+         <!-- <skipTests>true</skipTests> Paper - This [was] not going to end well -->
+-- 
+2.20.1
+

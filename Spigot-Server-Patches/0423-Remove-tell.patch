@@ -1,0 +1,22 @@
+From dd54fc0b0076381f0482f690ad58acd6bbc4d616 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 14:54:59 +0200
+Subject: [PATCH] Remove tell.
+
+
+diff --git a/src/main/java/net/minecraft/server/CommandDispatcher.java b/src/main/java/net/minecraft/server/CommandDispatcher.java
+index 686878fb0..2b9a76881 100644
+--- a/src/main/java/net/minecraft/server/CommandDispatcher.java
++++ b/src/main/java/net/minecraft/server/CommandDispatcher.java
+@@ -58,7 +58,7 @@ public class CommandDispatcher {
+         CommandList.a(this.b);
+         CommandLocate.a(this.b);
+         CommandLoot.a(this.b);
+-        CommandTell.a(this.b);
++        // CommandTell.a(this.b); // Servett: Remove tell
+         CommandParticle.a(this.b);
+         CommandPlaySound.a(this.b);
+         CommandPublish.a(this.b);
+-- 
+2.20.1
+

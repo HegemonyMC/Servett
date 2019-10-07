@@ -1,0 +1,417 @@
+From 861e618fa3b6bb8930e6dd22e3165507fcffdfbe Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 14:50:06 +0200
+Subject: [PATCH] Remove Bukkit commands
+
+
+diff --git a/src/main/java/org/bukkit/command/SimpleCommandMap.java b/src/main/java/org/bukkit/command/SimpleCommandMap.java
+index 460fda05..a4a1edde 100644
+--- a/src/main/java/org/bukkit/command/SimpleCommandMap.java
++++ b/src/main/java/org/bukkit/command/SimpleCommandMap.java
+@@ -16,9 +16,6 @@ import org.apache.commons.lang.Validate;
+ import org.bukkit.Location;
+ import org.bukkit.Server;
+ import org.bukkit.command.defaults.BukkitCommand;
+-import org.bukkit.command.defaults.HelpCommand;
+-import org.bukkit.command.defaults.PluginsCommand;
+-import org.bukkit.command.defaults.ReloadCommand;
+ import org.bukkit.command.defaults.VersionCommand;
+ import org.bukkit.entity.Player;
+ import org.bukkit.util.StringUtil;
+@@ -36,13 +33,10 @@ public class SimpleCommandMap implements CommandMap {
+ 
+     private void setDefaultCommands() {
+         register("bukkit", new VersionCommand("version"));
+-        register("bukkit", new ReloadCommand("reload"));
+-        register("bukkit", new PluginsCommand("plugins"));
+         register("bukkit", new co.aikar.timings.TimingsCommand("timings")); // Paper
+     }
+ 
+     public void setFallbackCommands() {
+-        register("bukkit", new HelpCommand());
+     }
+ 
+     /**
+diff --git a/src/main/java/org/bukkit/command/defaults/HelpCommand.java b/src/main/java/org/bukkit/command/defaults/HelpCommand.java
+deleted file mode 100644
+index 3ec11eb2..00000000
+--- a/src/main/java/org/bukkit/command/defaults/HelpCommand.java
++++ /dev/null
+@@ -1,230 +0,0 @@
+-package org.bukkit.command.defaults;
+-
+-import com.google.common.collect.ImmutableList;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.HashMap;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.TreeSet;
+-import org.apache.commons.lang.ArrayUtils;
+-import org.apache.commons.lang.StringUtils;
+-import org.apache.commons.lang.Validate;
+-import org.apache.commons.lang.math.NumberUtils;
+-import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+-import org.bukkit.command.CommandSender;
+-import org.bukkit.command.ConsoleCommandSender;
+-import org.bukkit.help.HelpMap;
+-import org.bukkit.help.HelpTopic;
+-import org.bukkit.help.HelpTopicComparator;
+-import org.bukkit.help.IndexHelpTopic;
+-import org.bukkit.util.ChatPaginator;
+-import org.jetbrains.annotations.NotNull;
+-import org.jetbrains.annotations.Nullable;
+-
+-public class HelpCommand extends BukkitCommand {
+-    public HelpCommand() {
+-        super("help");
+-        this.description = "Shows the help menu";
+-        this.usageMessage = "/help <pageNumber>\n/help <topic>\n/help <topic> <pageNumber>";
+-        this.setAliases(Arrays.asList(new String[] { "?" }));
+-        this.setPermission("bukkit.command.help");
+-    }
+-
+-    @Override
+-    public boolean execute(@NotNull CommandSender sender, @NotNull String currentAlias, @NotNull String[] args) {
+-        if (!testPermission(sender)) return true;
+-
+-        String command;
+-        int pageNumber;
+-        int pageHeight;
+-        int pageWidth;
+-
+-        if (args.length == 0) {
+-            command = "";
+-            pageNumber = 1;
+-        } else if (NumberUtils.isDigits(args[args.length - 1])) {
+-            command = StringUtils.join(ArrayUtils.subarray(args, 0, args.length - 1), " ");
+-            try {
+-                pageNumber = NumberUtils.createInteger(args[args.length - 1]);
+-            } catch (NumberFormatException exception) {
+-                pageNumber = 1;
+-            }
+-            if (pageNumber <= 0) {
+-                pageNumber = 1;
+-            }
+-        } else {
+-            command = StringUtils.join(args, " ");
+-            pageNumber = 1;
+-        }
+-
+-        if (sender instanceof ConsoleCommandSender) {
+-            pageHeight = ChatPaginator.UNBOUNDED_PAGE_HEIGHT;
+-            pageWidth = ChatPaginator.UNBOUNDED_PAGE_WIDTH;
+-        } else {
+-            pageHeight = ChatPaginator.CLOSED_CHAT_PAGE_HEIGHT - 1;
+-            pageWidth = ChatPaginator.GUARANTEED_NO_WRAP_CHAT_PAGE_WIDTH;
+-        }
+-
+-        HelpMap helpMap = Bukkit.getServer().getHelpMap();
+-        HelpTopic topic = helpMap.getHelpTopic(command);
+-
+-        if (topic == null) {
+-            topic = helpMap.getHelpTopic("/" + command);
+-        }
+-
+-        if (topic == null) {
+-            topic = findPossibleMatches(command);
+-        }
+-
+-        if (topic == null || !topic.canSee(sender)) {
+-            sender.sendMessage(ChatColor.RED + "No help for " + command);
+-            return true;
+-        }
+-
+-        ChatPaginator.ChatPage page = ChatPaginator.paginate(topic.getFullText(sender), pageNumber, pageWidth, pageHeight);
+-
+-        StringBuilder header = new StringBuilder();
+-        header.append(ChatColor.YELLOW);
+-        header.append("--------- ");
+-        header.append(ChatColor.WHITE);
+-        header.append("Help: ");
+-        header.append(topic.getName());
+-        header.append(" ");
+-        if (page.getTotalPages() > 1) {
+-            header.append("(");
+-            header.append(page.getPageNumber());
+-            header.append("/");
+-            header.append(page.getTotalPages());
+-            header.append(") ");
+-        }
+-        header.append(ChatColor.YELLOW);
+-        for (int i = header.length(); i < ChatPaginator.GUARANTEED_NO_WRAP_CHAT_PAGE_WIDTH; i++) {
+-            header.append("-");
+-        }
+-        sender.sendMessage(header.toString());
+-
+-        sender.sendMessage(page.getLines());
+-
+-        return true;
+-    }
+-
+-    @NotNull
+-    @Override
+-    public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) {
+-        Validate.notNull(sender, "Sender cannot be null");
+-        Validate.notNull(args, "Arguments cannot be null");
+-        Validate.notNull(alias, "Alias cannot be null");
+-
+-        if (args.length == 1) {
+-            List<String> matchedTopics = new ArrayList<String>();
+-            String searchString = args[0];
+-            for (HelpTopic topic : Bukkit.getServer().getHelpMap().getHelpTopics()) {
+-                String trimmedTopic = topic.getName().startsWith("/") ? topic.getName().substring(1) : topic.getName();
+-
+-                if (trimmedTopic.startsWith(searchString)) {
+-                    matchedTopics.add(trimmedTopic);
+-                }
+-            }
+-            return matchedTopics;
+-        }
+-        return ImmutableList.of();
+-    }
+-
+-    @Nullable
+-    protected HelpTopic findPossibleMatches(@NotNull String searchString) {
+-        int maxDistance = (searchString.length() / 5) + 3;
+-        Set<HelpTopic> possibleMatches = new TreeSet<HelpTopic>(HelpTopicComparator.helpTopicComparatorInstance());
+-
+-        if (searchString.startsWith("/")) {
+-            searchString = searchString.substring(1);
+-        }
+-
+-        for (HelpTopic topic : Bukkit.getServer().getHelpMap().getHelpTopics()) {
+-            String trimmedTopic = topic.getName().startsWith("/") ? topic.getName().substring(1) : topic.getName();
+-
+-            if (trimmedTopic.length() < searchString.length()) {
+-                continue;
+-            }
+-
+-            if (Character.toLowerCase(trimmedTopic.charAt(0)) != Character.toLowerCase(searchString.charAt(0))) {
+-                continue;
+-            }
+-
+-            if (damerauLevenshteinDistance(searchString, trimmedTopic.substring(0, searchString.length())) < maxDistance) {
+-                possibleMatches.add(topic);
+-            }
+-        }
+-
+-        if (possibleMatches.size() > 0) {
+-            return new IndexHelpTopic("Search", null, null, possibleMatches, "Search for: " + searchString);
+-        } else {
+-            return null;
+-        }
+-    }
+-
+-    /**
+-     * Computes the Dameraur-Levenshtein Distance between two strings. Adapted
+-     * from the algorithm at <a href="http://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance">Wikipedia: Damerau–Levenshtein distance</a>
+-     *
+-     * @param s1 The first string being compared.
+-     * @param s2 The second string being compared.
+-     * @return The number of substitutions, deletions, insertions, and
+-     * transpositions required to get from s1 to s2.
+-     */
+-    protected static int damerauLevenshteinDistance(@Nullable String s1, @Nullable String s2) {
+-        if (s1 == null && s2 == null) {
+-            return 0;
+-        }
+-        if (s1 != null && s2 == null) {
+-            return s1.length();
+-        }
+-        if (s1 == null && s2 != null) {
+-            return s2.length();
+-        }
+-
+-        int s1Len = s1.length();
+-        int s2Len = s2.length();
+-        int[][] H = new int[s1Len + 2][s2Len + 2];
+-
+-        int INF = s1Len + s2Len;
+-        H[0][0] = INF;
+-        for (int i = 0; i <= s1Len; i++) {
+-            H[i + 1][1] = i;
+-            H[i + 1][0] = INF;
+-        }
+-        for (int j = 0; j <= s2Len; j++) {
+-            H[1][j + 1] = j;
+-            H[0][j + 1] = INF;
+-        }
+-
+-        Map<Character, Integer> sd = new HashMap<Character, Integer>();
+-        for (char Letter : (s1 + s2).toCharArray()) {
+-            if (!sd.containsKey(Letter)) {
+-                sd.put(Letter, 0);
+-            }
+-        }
+-
+-        for (int i = 1; i <= s1Len; i++) {
+-            int DB = 0;
+-            for (int j = 1; j <= s2Len; j++) {
+-                int i1 = sd.get(s2.charAt(j - 1));
+-                int j1 = DB;
+-
+-                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+-                    H[i + 1][j + 1] = H[i][j];
+-                    DB = j;
+-                } else {
+-                    H[i + 1][j + 1] = Math.min(H[i][j], Math.min(H[i + 1][j], H[i][j + 1])) + 1;
+-                }
+-
+-                H[i + 1][j + 1] = Math.min(H[i + 1][j + 1], H[i1][j1] + (i - i1 - 1) + 1 + (j - j1 - 1));
+-            }
+-            sd.put(s1.charAt(i - 1), i);
+-        }
+-
+-        return H[s1Len + 1][s2Len + 1];
+-    }
+-}
+diff --git a/src/main/java/org/bukkit/command/defaults/PluginsCommand.java b/src/main/java/org/bukkit/command/defaults/PluginsCommand.java
+deleted file mode 100644
+index 6cfd9f3c..00000000
+--- a/src/main/java/org/bukkit/command/defaults/PluginsCommand.java
++++ /dev/null
+@@ -1,67 +0,0 @@
+-package org.bukkit.command.defaults;
+-
+-import java.util.Arrays;
+-import java.util.Collections;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.TreeMap;
+-
+-import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+-import org.bukkit.command.CommandSender;
+-import org.bukkit.plugin.Plugin;
+-import org.jetbrains.annotations.NotNull;
+-
+-public class PluginsCommand extends BukkitCommand {
+-    public PluginsCommand(@NotNull String name) {
+-        super(name);
+-        this.description = "Gets a list of plugins running on the server";
+-        this.usageMessage = "/plugins";
+-        this.setPermission("bukkit.command.plugins");
+-        this.setAliases(Arrays.asList("pl"));
+-    }
+-
+-    @Override
+-    public boolean execute(@NotNull CommandSender sender, @NotNull String currentAlias, @NotNull String[] args) {
+-        if (!testPermission(sender)) return true;
+-
+-        sender.sendMessage("Plugins " + getPluginList());
+-        return true;
+-    }
+-
+-    @NotNull
+-    @Override
+-    public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) throws IllegalArgumentException {
+-        return Collections.emptyList();
+-    }
+-
+-    @NotNull
+-    private String getPluginList() {
+-        // Paper start
+-        TreeMap<String, ChatColor> plugins = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+-
+-        for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+-            // Paper start - Add an asterisk to legacy plugins (so admins are aware)
+-            String pluginName = plugin.getDescription().getName();
+-            if (org.bukkit.UnsafeValues.isLegacyPlugin(plugin)) {
+-                pluginName += "*";
+-            }
+-
+-            plugins.put(pluginName, plugin.isEnabled() ? ChatColor.GREEN : ChatColor.RED);
+-            // Paper end
+-        }
+-
+-        StringBuilder pluginList = new StringBuilder();
+-        for (Map.Entry<String, ChatColor> entry : plugins.entrySet()) {
+-            if (pluginList.length() > 0) {
+-                pluginList.append(ChatColor.WHITE);
+-                pluginList.append(", ");
+-            }
+-            pluginList.append(entry.getValue());
+-            pluginList.append(entry.getKey());
+-        }
+-
+-        return "(" + plugins.size() + "): " + pluginList.toString();
+-        // Paper end
+-    }
+-}
+diff --git a/src/main/java/org/bukkit/command/defaults/ReloadCommand.java b/src/main/java/org/bukkit/command/defaults/ReloadCommand.java
+deleted file mode 100644
+index af8ab73f..00000000
+--- a/src/main/java/org/bukkit/command/defaults/ReloadCommand.java
++++ /dev/null
+@@ -1,65 +0,0 @@
+-package org.bukkit.command.defaults;
+-
+-import java.util.Arrays;
+-import java.util.Collections;
+-import java.util.List;
+-import org.bukkit.Bukkit;
+-import org.bukkit.ChatColor;
+-import org.bukkit.command.Command;
+-import org.bukkit.command.CommandSender;
+-import org.jetbrains.annotations.NotNull;
+-
+-public class ReloadCommand extends BukkitCommand {
+-    public ReloadCommand(@NotNull String name) {
+-        super(name);
+-        this.description = "Reloads the server configuration and plugins";
+-        this.usageMessage = "/reload [permissions|commands|confirm]"; // Paper
+-        this.setPermission("bukkit.command.reload");
+-        this.setAliases(Arrays.asList("rl"));
+-    }
+-
+-    @Override
+-    public boolean execute(@NotNull CommandSender sender, @NotNull String currentAlias, @NotNull String[] args) { // Paper
+-        if (!testPermission(sender)) return true;
+-
+-        // Paper start - Reload permissions.yml & require confirm
+-        boolean confirmed = System.getProperty("LetMeReload") != null;
+-        if (args.length == 1) {
+-            if (args[0].equalsIgnoreCase("permissions")) {
+-                Bukkit.getServer().reloadPermissions();
+-                Command.broadcastCommandMessage(sender, ChatColor.GREEN + "Permissions successfully reloaded.");
+-                return true;
+-            } else if ("commands".equalsIgnoreCase(args[0])) {
+-                if (Bukkit.getServer().reloadCommandAliases()) {
+-                    Command.broadcastCommandMessage(sender, ChatColor.GREEN + "Command aliases successfully reloaded.");
+-                } else {
+-                    Command.broadcastCommandMessage(sender, ChatColor.RED + "An error occurred while trying to reload command aliases.");
+-                }
+-                return true;
+-            } else if ("confirm".equalsIgnoreCase(args[0])) {
+-                confirmed = true;
+-            } else {
+-                Command.broadcastCommandMessage(sender, ChatColor.RED + "Usage: " + usageMessage);
+-                return true;
+-            }
+-        }
+-        if (!confirmed) {
+-            Command.broadcastCommandMessage(sender, ChatColor.RED + "Are you sure you wish to reload your server? Doing so may cause bugs and memory leaks. It is recommended to restart instead of using /reload. To confirm, please type " + ChatColor.YELLOW + "/reload confirm");
+-            return true;
+-        }
+-        // Paper end
+-
+-        Command.broadcastCommandMessage(sender, ChatColor.RED + "Please note that this command is not supported and may cause issues when using some plugins.");
+-        Command.broadcastCommandMessage(sender, ChatColor.RED + "If you encounter any issues please use the /stop command to restart your server.");
+-        Bukkit.reload();
+-        Command.broadcastCommandMessage(sender, ChatColor.GREEN + "Reload complete.");
+-
+-        return true;
+-    }
+-
+-    @NotNull
+-    @Override
+-    public List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) throws IllegalArgumentException {
+-        return java.util.Collections.singletonList("permissions"); // Paper
+-    }
+-}
+-- 
+2.20.1
+

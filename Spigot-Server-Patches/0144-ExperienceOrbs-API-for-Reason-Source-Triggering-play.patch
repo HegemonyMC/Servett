@@ -1,4 +1,4 @@
-From 68d20b0fd49df908a13a9d582069be08d94d95a6 Mon Sep 17 00:00:00 2001
+From ec18893364fc598270cfc62ee0aaf384ea5c6be9 Mon Sep 17 00:00:00 2001
 From: Aikar <aikar@aikar.co>
 Date: Tue, 19 Dec 2017 16:31:46 -0500
 Subject: [PATCH] ExperienceOrbs API for Reason/Source/Triggering player
@@ -265,10 +265,10 @@ index 0cb2e6d87..2bbd3663a 100644
  
      }
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-index 75a3a8a88..8798ecae3 100644
+index 6addb271c..4180ec7ae 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
-@@ -1713,7 +1713,7 @@ public class CraftWorld implements World {
+@@ -1714,7 +1714,7 @@ public class CraftWorld implements World {
          } else if (TNTPrimed.class.isAssignableFrom(clazz)) {
              entity = new EntityTNTPrimed(world, x, y, z, null);
          } else if (ExperienceOrb.class.isAssignableFrom(clazz)) {

@@ -1,14 +1,14 @@
-From 24c1c0cccb1f6b295d4de9643e0b503f03f1c68d Mon Sep 17 00:00:00 2001
+From 00ad94a88ed0d990d39855c6cc206f946e1ffe71 Mon Sep 17 00:00:00 2001
 From: kashike <kashike@vq.lc>
 Date: Thu, 3 Mar 2016 02:18:39 -0600
 Subject: [PATCH] Be a bit more informative in maxHealth exception
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
-index 2e007d4ff..4948e61da 100644
+index 9c1d4e758..029c2d475 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
-@@ -104,7 +104,10 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+@@ -105,7 +105,10 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
      public void setHealth(double health) {
          health = (float) health;
          if ((health < 0) || (health > getMaxHealth())) {

@@ -1,4 +1,4 @@
-From 11542e3f74d5091b148c9c4c21f4e8fb56f74054 Mon Sep 17 00:00:00 2001
+From 95281e50475f705e0d5a9847e158d060f86716ee Mon Sep 17 00:00:00 2001
 From: Aikar <aikar@aikar.co>
 Date: Wed, 4 Jul 2018 02:25:48 -0400
 Subject: [PATCH] Entity#getChunk API
@@ -6,7 +6,7 @@ Subject: [PATCH] Entity#getChunk API
 Get the chunk the entity is currently registered to
 
 diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
-index 35d0909b..adca48f1 100644
+index ade1bf5f..5a7776fa 100644
 --- a/src/main/java/org/bukkit/entity/Entity.java
 +++ b/src/main/java/org/bukkit/entity/Entity.java
 @@ -3,6 +3,7 @@ package org.bukkit.entity;
@@ -17,7 +17,7 @@ index 35d0909b..adca48f1 100644
  import org.bukkit.EntityEffect;
  import org.bukkit.Location;
  import org.bukkit.Nameable;
-@@ -624,5 +625,13 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
+@@ -630,5 +631,13 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
       * @return True if entity spawned from a mob spawner
       */
      boolean fromMobSpawner();

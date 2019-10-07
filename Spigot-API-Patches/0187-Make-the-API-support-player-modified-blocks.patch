@@ -1,0 +1,32 @@
+From 528290f131332173344f333214ad45073e554138 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 14:31:24 +0200
+Subject: [PATCH] Make the API support player modified blocks
+
+
+diff --git a/src/main/java/org/bukkit/block/Block.java b/src/main/java/org/bukkit/block/Block.java
+index 038de5a6..4eea4db2 100644
+--- a/src/main/java/org/bukkit/block/Block.java
++++ b/src/main/java/org/bukkit/block/Block.java
+@@ -9,6 +9,7 @@ import org.bukkit.Material;
+ import org.bukkit.World;
+ import org.bukkit.block.data.Bisected;
+ import org.bukkit.block.data.BlockData;
++import org.bukkit.entity.Player;
+ import org.bukkit.inventory.ItemStack;
+ import org.bukkit.metadata.Metadatable;
+ import org.bukkit.util.BoundingBox;
+@@ -255,6 +256,10 @@ public interface Block extends Metadatable {
+      */
+     void setBlockData(@NotNull BlockData data);
+ 
++    void setPlayerModifiedBlock(Player player, Material type);
++
++    void removePlayerModifiedBlock(Player player);
++
+     /**
+      * Sets the complete data for this block
+      *
+-- 
+2.20.1
+

@@ -1,14 +1,14 @@
-From 138422d7592fb582688ae73c3a315d35987fee61 Mon Sep 17 00:00:00 2001
+From 4533d2f0dc2398c493be41661b0516392a883067 Mon Sep 17 00:00:00 2001
 From: Byteflux <byte@byteflux.net>
 Date: Mon, 29 Feb 2016 17:50:31 -0600
 Subject: [PATCH] Entity Origin API
 
 
 diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
-index 699c31d9..c8439d64 100644
+index d6f9836a..9cb41f10 100644
 --- a/src/main/java/org/bukkit/entity/Entity.java
 +++ b/src/main/java/org/bukkit/entity/Entity.java
-@@ -606,4 +606,16 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
+@@ -612,4 +612,16 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
      @Override
      Spigot spigot();
      // Spigot end

@@ -1,0 +1,194 @@
+From eecc1a5787da3d8ba19fd8d2df1539a2559b33f7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 8 Oct 2019 17:53:22 +0200
+Subject: [PATCH] Make statistic use constant fields rather than enums
+
+
+diff --git a/src/main/java/org/bukkit/Statistic.java b/src/main/java/org/bukkit/Statistic.java
+index c54c0012..2b008b8b 100644
+--- a/src/main/java/org/bukkit/Statistic.java
++++ b/src/main/java/org/bukkit/Statistic.java
+@@ -6,98 +6,98 @@ import org.jetbrains.annotations.NotNull;
+ /**
+  * Represents a countable statistic, which is tracked by the server.
+  */
+-public enum Statistic implements Keyed {
+-    DAMAGE_DEALT,
+-    DAMAGE_TAKEN,
+-    DEATHS,
+-    MOB_KILLS,
+-    PLAYER_KILLS,
+-    FISH_CAUGHT,
+-    ANIMALS_BRED,
+-    LEAVE_GAME,
+-    JUMP,
+-    DROP_COUNT,
+-    DROP(Type.ITEM),
+-    PICKUP(Type.ITEM),
++public class Statistic implements Keyed {
++    public static final Statistic DAMAGE_DEALT = new Statistic("DAMAGE_DEALT");
++    public static final Statistic DAMAGE_TAKEN = new Statistic("DAMAGE_TAKEN");
++    public static final Statistic DEATHS = new Statistic("DEATHS");
++    public static final Statistic MOB_KILLS = new Statistic("MOB_KILLS");
++    public static final Statistic PLAYER_KILLS = new Statistic("PLAYER_KILLS");
++    public static final Statistic FISH_CAUGHT = new Statistic("FISH_CAUGHT");
++    public static final Statistic ANIMALS_BRED = new Statistic("ANIMALS_BRED");
++    public static final Statistic LEAVE_GAME = new Statistic("LEAVE_GAME");
++    public static final Statistic JUMP = new Statistic("JUMP");
++    public static final Statistic DROP_COUNT = new Statistic("DROP_COUNT");
++    public static final Statistic DROP = new Statistic("DROP", Type.ITEM);
++    public static final Statistic PICKUP = new Statistic("PICKUP", Type.ITEM);
+     /**
+      * Name is misleading, actually records ticks played.
+      */
+-    PLAY_ONE_MINUTE,
+-    WALK_ONE_CM,
+-    WALK_ON_WATER_ONE_CM,
+-    FALL_ONE_CM,
+-    SNEAK_TIME,
+-    CLIMB_ONE_CM,
+-    FLY_ONE_CM,
+-    WALK_UNDER_WATER_ONE_CM,
+-    MINECART_ONE_CM,
+-    BOAT_ONE_CM,
+-    PIG_ONE_CM,
+-    HORSE_ONE_CM,
+-    SPRINT_ONE_CM,
+-    CROUCH_ONE_CM,
+-    AVIATE_ONE_CM,
+-    MINE_BLOCK(Type.BLOCK),
+-    USE_ITEM(Type.ITEM),
+-    BREAK_ITEM(Type.ITEM),
+-    CRAFT_ITEM(Type.ITEM),
+-    KILL_ENTITY(Type.ENTITY),
+-    ENTITY_KILLED_BY(Type.ENTITY),
+-    TIME_SINCE_DEATH,
+-    TALKED_TO_VILLAGER,
+-    TRADED_WITH_VILLAGER,
+-    CAKE_SLICES_EATEN,
+-    CAULDRON_FILLED,
+-    CAULDRON_USED,
+-    ARMOR_CLEANED,
+-    BANNER_CLEANED,
+-    BREWINGSTAND_INTERACTION,
+-    BEACON_INTERACTION,
+-    DROPPER_INSPECTED,
+-    HOPPER_INSPECTED,
+-    DISPENSER_INSPECTED,
+-    NOTEBLOCK_PLAYED,
+-    NOTEBLOCK_TUNED,
+-    FLOWER_POTTED,
+-    TRAPPED_CHEST_TRIGGERED,
+-    ENDERCHEST_OPENED,
+-    ITEM_ENCHANTED,
+-    RECORD_PLAYED,
+-    FURNACE_INTERACTION,
+-    CRAFTING_TABLE_INTERACTION,
+-    CHEST_OPENED,
+-    SLEEP_IN_BED,
+-    SHULKER_BOX_OPENED,
+-    TIME_SINCE_REST,
+-    SWIM_ONE_CM,
+-    DAMAGE_DEALT_ABSORBED,
+-    DAMAGE_DEALT_RESISTED,
+-    DAMAGE_BLOCKED_BY_SHIELD,
+-    DAMAGE_ABSORBED,
+-    DAMAGE_RESISTED,
+-    CLEAN_SHULKER_BOX,
+-    OPEN_BARREL,
+-    INTERACT_WITH_BLAST_FURNACE,
+-    INTERACT_WITH_SMOKER,
+-    INTERACT_WITH_LECTERN,
+-    INTERACT_WITH_CAMPFIRE,
+-    INTERACT_WITH_CARTOGRAPHY_TABLE,
+-    INTERACT_WITH_LOOM,
+-    INTERACT_WITH_STONECUTTER,
+-    BELL_RING,
+-    RAID_TRIGGER,
+-    RAID_WIN;
++    public static final Statistic PLAY_ONE_MINUTE = new Statistic("PLAY_ONE_MINUTE");
++    public static final Statistic WALK_ONE_CM = new Statistic("WALK_ONE_CM");
++    public static final Statistic WALK_ON_WATER_ONE_CM = new Statistic("WALK_ON_WATER_ONE_CM");
++    public static final Statistic FALL_ONE_CM = new Statistic("FALL_ONE_CM");
++    public static final Statistic SNEAK_TIME = new Statistic("SNEAK_TIME");
++    public static final Statistic CLIMB_ONE_CM = new Statistic("CLIMB_ONE_CM");
++    public static final Statistic FLY_ONE_CM = new Statistic("FLY_ONE_CM");
++    public static final Statistic WALK_UNDER_WATER_ONE_CM = new Statistic("WALK_UNDER_WATER_ONE_CM");
++    public static final Statistic MINECART_ONE_CM = new Statistic("MINECART_ONE_CM");
++    public static final Statistic BOAT_ONE_CM = new Statistic("BOAT_ONE_CM");
++    public static final Statistic PIG_ONE_CM = new Statistic("PIG_ONE_CM");
++    public static final Statistic HORSE_ONE_CM = new Statistic("HORSE_ONE_CM");
++    public static final Statistic SPRINT_ONE_CM = new Statistic("SPRINT_ONE_CM");
++    public static final Statistic CROUCH_ONE_CM = new Statistic("CROUCH_ONE_CM");
++    public static final Statistic AVIATE_ONE_CM = new Statistic("AVIATE_ONE_CM");
++    public static final Statistic MINE_BLOCK = new Statistic("MINE_BLOCK", Type.BLOCK);
++    public static final Statistic USE_ITEM = new Statistic("USE_ITEM", Type.ITEM);
++    public static final Statistic BREAK_ITEM = new Statistic("BREAK_ITEM", Type.ITEM);
++    public static final Statistic CRAFT_ITEM = new Statistic("CRAFT_ITEM", Type.ITEM);
++    public static final Statistic KILL_ENTITY = new Statistic("KILL_ENTITY", Type.ENTITY);
++    public static final Statistic ENTITY_KILLED_BY = new Statistic("ENTITY_KILLED_BY", Type.ENTITY);
++    public static final Statistic TIME_SINCE_DEATH = new Statistic("TIME_SINCE_DEATH");
++    public static final Statistic TALKED_TO_VILLAGER = new Statistic("TALKED_TO_VILLAGER");
++    public static final Statistic TRADED_WITH_VILLAGER = new Statistic("TRADED_WITH_VILLAGER");
++    public static final Statistic CAKE_SLICES_EATEN = new Statistic("CAKE_SLICES_EATEN");
++    public static final Statistic CAULDRON_FILLED = new Statistic("CAULDRON_FILLED");
++    public static final Statistic CAULDRON_USED = new Statistic("CAULDRON_USED");
++    public static final Statistic ARMOR_CLEANED = new Statistic("ARMOR_CLEANED");
++    public static final Statistic BANNER_CLEANED = new Statistic("BANNER_CLEANED");
++    public static final Statistic BREWINGSTAND_INTERACTION = new Statistic("BREWINGSTAND_INTERACTION");
++    public static final Statistic BEACON_INTERACTION = new Statistic("BEACON_INTERACTION");
++    public static final Statistic DROPPER_INSPECTED = new Statistic("DROPPED_INSPECTED");
++    public static final Statistic HOPPER_INSPECTED = new Statistic("HOPPER_INSPECTED");
++    public static final Statistic DISPENSER_INSPECTED = new Statistic("DISPENSER_INSPECTED");
++    public static final Statistic NOTEBLOCK_PLAYED = new Statistic("NOTEBLOCK_PLAYED");
++    public static final Statistic NOTEBLOCK_TUNED = new Statistic("NOTEBLOCK_TUNED");
++    public static final Statistic FLOWER_POTTED = new Statistic("FLOWER_POTTED");
++    public static final Statistic TRAPPED_CHEST_TRIGGERED = new Statistic("TRAPPED_CHEST_TRIGGERED");
++    public static final Statistic ENDERCHEST_OPENED = new Statistic("ENDERCHEST_OPENED");
++    public static final Statistic ITEM_ENCHANTED = new Statistic("ITEM_ENCHANTED");
++    public static final Statistic RECORD_PLAYED = new Statistic("RECORD_PLAYED");
++    public static final Statistic FURNACE_INTERACTION = new Statistic("FURNACE_INTERACTION");
++    public static final Statistic CRAFTING_TABLE_INTERACTION = new Statistic("CRAFTING_TABLE_INTERACTION");
++    public static final Statistic CHEST_OPENED = new Statistic("CHEST_OPENED");
++    public static final Statistic SLEEP_IN_BED = new Statistic("SLEEP_IN_BED");
++    public static final Statistic SHULKER_BOX_OPENED = new Statistic("SHULKER_BOX_OPENED");
++    public static final Statistic TIME_SINCE_REST = new Statistic("TIME_SINCE_REST");
++    public static final Statistic SWIM_ONE_CM = new Statistic("SWIM_ONE_CM");
++    public static final Statistic DAMAGE_DEALT_ABSORBED = new Statistic("DAMAGE_DEALT_ABSORBED");
++    public static final Statistic DAMAGE_DEALT_RESISTED = new Statistic("DAMAGE_DEALT_RESISTED");
++    public static final Statistic DAMAGE_BLOCKED_BY_SHIELD = new Statistic("DAMAGE_BLOCKED_BY_SHIELD");
++    public static final Statistic DAMAGE_ABSORBED = new Statistic("DAMAGE_ABSORBED");
++    public static final Statistic DAMAGE_RESISTED = new Statistic("DAMAGE_RESISTED");
++    public static final Statistic CLEAN_SHULKER_BOX = new Statistic("CLEAN_SHULKER_BOX");
++    public static final Statistic OPEN_BARREL = new Statistic("OPEN_BARREL");
++    public static final Statistic INTERACT_WITH_BLAST_FURNACE = new Statistic("INTERACT_WITH_BLAST_FURNACE");
++    public static final Statistic INTERACT_WITH_SMOKER = new Statistic("INTERACT_WITH_SMOKER");
++    public static final Statistic INTERACT_WITH_LECTERN = new Statistic("INTERACT_WITH_LECTERN");
++    public static final Statistic INTERACT_WITH_CAMPFIRE = new Statistic("INTERACT_WITH_CAMPFIRE");
++    public static final Statistic INTERACT_WITH_CARTOGRAPHY_TABLE = new Statistic("INTERACT_WITH_CARTOGRAPHY_TABLE");
++    public static final Statistic INTERACT_WITH_LOOM = new Statistic("INTERACT_WITH_LOOM");
++    public static final Statistic INTERACT_WITH_STONECUTTER = new Statistic("INTERACT_WITH_STONECUTTER");
++    public static final Statistic BELL_RING = new Statistic("BELL_RING");
++    public static final Statistic RAID_TRIGGER = new Statistic("RAID_TRIGGER");
++    public static final Statistic RAID_WIN = new Statistic("RAID_WIN");
+ 
+     private final Type type;
+     private final NamespacedKey key;
+ 
+-    private Statistic() {
+-        this(Type.UNTYPED);
++    public Statistic(String name) {
++        this(name, Type.UNTYPED);
+     }
+ 
+-    private Statistic(/*@NotNull*/ Type type) {
++    public Statistic(String name, Type type) {
+         this.type = type;
+-        this.key = NamespacedKey.minecraft(name().toLowerCase(Locale.ROOT));
++        this.key = NamespacedKey.minecraft(name.toLowerCase(Locale.ROOT));
+     }
+ 
+     /**
+-- 
+2.20.1
+

@@ -1,0 +1,27 @@
+From 02d95f0969aca89e2e56d621197262d6f5770881 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 7 Oct 2019 15:20:37 +0200
+Subject: [PATCH] Disallow healing dead players.
+
+
+diff --git a/src/main/java/net/minecraft/server/EntityLiving.java b/src/main/java/net/minecraft/server/EntityLiving.java
+index f675ad2f5..a24a9c379 100644
+--- a/src/main/java/net/minecraft/server/EntityLiving.java
++++ b/src/main/java/net/minecraft/server/EntityLiving.java
+@@ -1013,6 +1013,13 @@ public abstract class EntityLiving extends Entity {
+         // CraftBukkit start - Handle scaled health
+         if (this instanceof EntityPlayer) {
+             org.bukkit.craftbukkit.entity.CraftPlayer player = ((EntityPlayer) this).getBukkitEntity();
++
++            // Servett start - Disallow healing dead players
++            if (player.isDead()) {
++                return;
++            }
++            // Servett end
++
+             // Squeeze
+             if (f < 0.0F) {
+                 player.setRealHealth(0.0D);
+-- 
+2.20.1
+

@@ -1,0 +1,153 @@
+From ff772bd954c0d94cec4c5653fbeaa532ae541814 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Fri, 11 Oct 2019 16:13:28 +0200
+Subject: [PATCH] Improve block API
+
+
+diff --git a/src/main/java/net/minecraft/server/Chunk.java b/src/main/java/net/minecraft/server/Chunk.java
+index 9dfa05c94..2f918520e 100644
+--- a/src/main/java/net/minecraft/server/Chunk.java
++++ b/src/main/java/net/minecraft/server/Chunk.java
+@@ -30,8 +30,6 @@ public class Chunk implements IChunkAccess {
+     private static final Logger LOGGER = LogManager.getLogger();
+     public static final ChunkSection a = null; public static final ChunkSection EMPTY_CHUNK_SECTION = Chunk.a; // Paper - OBFHELPER
+     private final ChunkSection[] sections;
+-    private final Map<Long, Map<Integer, PlayerBlockModification>> playerBlockModifications = new HashMap<>(); // Servett
+-    private boolean containsPlayerBlockModifications = false;
+     private final BiomeBase[] d;
+     private final Map<BlockPosition, NBTTagCompound> e;
+     public boolean loaded; public boolean isLoaded() { return loaded; } // Paper - OBFHELPER
+@@ -212,21 +210,13 @@ public class Chunk implements IChunkAccess {
+     }
+ 
+     // Servett start - Allow for player modified blocks
+-    public void addPlayerModifiedBlock(int x, int y, int z, int playerID, IBlockData blockData) {
++    public void addPlayerModifiedBlock(int x, int y, int z, EntityPlayer player, IBlockData blockData) {
+         final long position = BlockPosition.a(x, y, z);
+-        Map<Integer, PlayerBlockModification> modificationMap =
+-            this.playerBlockModifications.computeIfAbsent(position, k -> new HashMap<>());
+-        modificationMap.put(playerID, new PlayerBlockModification(playerID, blockData));
+-        this.containsPlayerBlockModifications = true;
++        player.modifiedBlocks.put(position, new PlayerBlockModification(player.getId(), blockData));
+     }
+-    public void removePlayerModifiedBlock(int x, int y, int z, int playerID) {
++    public void removePlayerModifiedBlock(int x, int y, int z, EntityPlayer entityPlayer) {
+         final long position = BlockPosition.a(x, y, z);
+-        final Map<Integer, PlayerBlockModification> modificationMap = this.playerBlockModifications.get(position);
+-        if (modificationMap == null) {
+-            return;
+-        }
+-        modificationMap.remove(playerID);
+-        this.containsPlayerBlockModifications = !this.playerBlockModifications.isEmpty();
++        entityPlayer.modifiedBlocks.remove(position);
+     }
+     // Servett end
+ 
+@@ -238,9 +228,9 @@ public class Chunk implements IChunkAccess {
+ 
+     public final IBlockData getBlockData(final int x, final int y, final int z) {
+         // Servett start - Allow for player modified blocks
+-        if (this.containsPlayerBlockModifications && EntityPlayer.tickingPlayer != null) {
+-            final Map<Integer, PlayerBlockModification> modificationMap = this.playerBlockModifications.get(BlockPosition.a(x, y, z));
+-            final PlayerBlockModification blockModification = modificationMap.get(EntityPlayer.tickingPlayer.getId());
++        if (EntityPlayer.tickingPlayer != null) {
++            final PlayerBlockModification blockModification = EntityPlayer.tickingPlayer
++                .modifiedBlocks.get(BlockPosition.a(x, y, z));
+             if (blockModification != null) {
+                 return blockModification.getModifiedBlock();
+             }
+@@ -1092,7 +1082,7 @@ public class Chunk implements IChunkAccess {
+     }
+ 
+     // Servett Start
+-    private class PlayerBlockModification {
++    public static class PlayerBlockModification {
+ 
+         private final int playerID;
+         private final IBlockData modifiedBlock;
+diff --git a/src/main/java/net/minecraft/server/EntityPlayer.java b/src/main/java/net/minecraft/server/EntityPlayer.java
+index b0a82308b..f9ffb4796 100644
+--- a/src/main/java/net/minecraft/server/EntityPlayer.java
++++ b/src/main/java/net/minecraft/server/EntityPlayer.java
+@@ -7,8 +7,10 @@ import io.netty.util.concurrent.Future;
+ import java.util.ArrayDeque; // Paper
+ import java.util.Collection;
+ import java.util.Deque; // Paper
++import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.Map;
+ import java.util.OptionalInt;
+ import java.util.Random;
+ import javax.annotation.Nullable;
+@@ -40,6 +42,7 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
+ 
+     public static EntityPlayer tickingPlayer; // Servett
+     private static final Logger LOGGER = LogManager.getLogger();
++    public final Map<Long, Chunk.PlayerBlockModification> modifiedBlocks = new HashMap<>(); // Servett
+     public String locale = null; // CraftBukkit - lowercase // Paper - default to null
+     public PlayerConnection playerConnection;
+     public final MinecraftServer server;
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+index 9139e337e..cc4de159f 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+@@ -10,6 +10,7 @@ import net.minecraft.server.BlockPosition;
+ import net.minecraft.server.BlockRedstoneWire;
+ import net.minecraft.server.BlockTileEntity;
+ import net.minecraft.server.Blocks;
++import net.minecraft.server.EntityPlayer;
+ import net.minecraft.server.EnumDirection;
+ import net.minecraft.server.EnumSkyBlock;
+ import net.minecraft.server.GeneratorAccess;
+@@ -39,6 +40,7 @@ import org.bukkit.craftbukkit.CraftChunk;
+ import org.bukkit.craftbukkit.CraftFluidCollisionMode;
+ import org.bukkit.craftbukkit.CraftWorld;
+ import org.bukkit.craftbukkit.block.data.CraftBlockData;
++import org.bukkit.craftbukkit.entity.CraftPlayer;
+ import org.bukkit.craftbukkit.inventory.CraftItemStack;
+ import org.bukkit.craftbukkit.util.CraftMagicNumbers;
+ import org.bukkit.craftbukkit.util.CraftRayTraceResult;
+@@ -182,20 +184,34 @@ public class CraftBlock implements Block {
+     }
+ 
+     // Servett start
+-    public void setPlayerModifiedBlock(Player player, Material type) {
+-        final BlockData blockData = type.createBlockData();
++    @Override
++    public void setPlayerModifiedBlock(Player player, BlockData type) {
+         // Track the modified block internally
+         ((CraftChunk) getChunk()).getHandle().addPlayerModifiedBlock(this.getX(), this.getY(), this.getZ(),
+-            player.getEntityId(), ((CraftBlockData) blockData).getState());
++            ((CraftPlayer) player).getHandle(), ((CraftBlockData) type).getState());
+         // Send the block change
+-        player.sendBlockChange(this.getLocation(), blockData);
++        player.sendBlockChange(this.getLocation(), type);
+     }
+ 
++    @Override
+     public void removePlayerModifiedBlock(Player player) {
+         ((CraftChunk) getChunk()).getHandle().removePlayerModifiedBlock(this.getX(), this.getY(), this.getZ(),
+-            player.getEntityId());
++            ((CraftPlayer) player).getHandle());
+         player.sendBlockChange(this.getLocation(), getBlockData());
+     }
++
++    @Override
++    public BlockData getPlayerKnownBlock(Player player) {
++        final EntityPlayer oldPlayer = EntityPlayer.tickingPlayer;
++        BlockData material;
++        try {
++            EntityPlayer.tickingPlayer = ((CraftPlayer) player).getHandle();
++            material = getBlockData();
++        } finally {
++            EntityPlayer.tickingPlayer = oldPlayer;
++        }
++        return material;
++    }
+     // Servett end
+ 
+     public boolean setTypeAndData(final IBlockData blockData, final boolean applyPhysics) {
+-- 
+2.20.1
+

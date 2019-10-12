@@ -1,0 +1,27 @@
+From 27040b7b6723d344b09575835df3346c240455d8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Fri, 11 Oct 2019 16:13:19 +0200
+Subject: [PATCH] Improve block API
+
+
+diff --git a/src/main/java/org/bukkit/block/Block.java b/src/main/java/org/bukkit/block/Block.java
+index 4eea4db2..c56b989c 100644
+--- a/src/main/java/org/bukkit/block/Block.java
++++ b/src/main/java/org/bukkit/block/Block.java
+@@ -256,10 +256,12 @@ public interface Block extends Metadatable {
+      */
+     void setBlockData(@NotNull BlockData data);
+ 
+-    void setPlayerModifiedBlock(Player player, Material type);
++    void setPlayerModifiedBlock(Player player, BlockData type);
+ 
+     void removePlayerModifiedBlock(Player player);
+ 
++    BlockData getPlayerKnownBlock(Player player);
++
+     /**
+      * Sets the complete data for this block
+      *
+-- 
+2.20.1
+

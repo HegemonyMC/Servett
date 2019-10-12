@@ -1,0 +1,50 @@
+From bd6373bab9243d8ab13d66c5052aeefb230b475a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Sat, 12 Oct 2019 14:24:44 +0200
+Subject: [PATCH] Add inventory meta
+
+
+diff --git a/src/main/java/org/bukkit/inventory/Inventory.java b/src/main/java/org/bukkit/inventory/Inventory.java
+index 01fe217d..18424460 100644
+--- a/src/main/java/org/bukkit/inventory/Inventory.java
++++ b/src/main/java/org/bukkit/inventory/Inventory.java
+@@ -27,6 +27,36 @@ import org.jetbrains.annotations.Nullable;
+  */
+ public interface Inventory extends Iterable<ItemStack> {
+ 
++    // Servett start: Implement inventory meta
++    class InventoryMetaHolder {
++
++        private Object meta = new Object();
++
++        public Object setMeta(final Object meta) {
++            final Object temp = this.meta;
++            this.meta = meta;
++            return temp;
++        }
++
++        public Object getMeta() {
++            return this.meta;
++        }
++
++        public <T> T getMeta(final Class<T> clazz) {
++            if (this.meta.getClass().isInstance(clazz)) {
++                return clazz.cast(this.getMeta());
++            }
++            return null;
++        }
++    }
++
++    InventoryMetaHolder inventoryMetaHolder = new InventoryMetaHolder();
++
++    default InventoryMetaHolder getInventoryMetaHolder() {
++        return inventoryMetaHolder;
++    }
++    // Servett end
++
+     /**
+      * Returns the size of the inventory
+      *
+-- 
+2.20.1
+

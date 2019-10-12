@@ -1,0 +1,35 @@
+From 00e838165e60403958d14e6404d726e260239141 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Sat, 12 Oct 2019 17:33:12 +0200
+Subject: [PATCH] Make getBlockData fail gracefully
+
+
+diff --git a/src/main/java/net/minecraft/server/Chunk.java b/src/main/java/net/minecraft/server/Chunk.java
+index 2f918520e..b942ce196 100644
+--- a/src/main/java/net/minecraft/server/Chunk.java
++++ b/src/main/java/net/minecraft/server/Chunk.java
+@@ -228,12 +228,16 @@ public class Chunk implements IChunkAccess {
+ 
+     public final IBlockData getBlockData(final int x, final int y, final int z) {
+         // Servett start - Allow for player modified blocks
+-        if (EntityPlayer.tickingPlayer != null) {
+-            final PlayerBlockModification blockModification = EntityPlayer.tickingPlayer
+-                .modifiedBlocks.get(BlockPosition.a(x, y, z));
+-            if (blockModification != null) {
+-                return blockModification.getModifiedBlock();
++        try {
++            if (EntityPlayer.tickingPlayer != null && EntityPlayer.tickingPlayer.modifiedBlocks != null) {
++                final PlayerBlockModification blockModification = EntityPlayer.tickingPlayer.modifiedBlocks.get(BlockPosition.a(x, y, z));
++                if (blockModification != null) {
++                    return blockModification.getModifiedBlock();
++                }
+             }
++        } catch (final Exception e) {
++            System.err.printf("FAILED TO READ PLAYER SPECIFIC BLOCK. TICKING PLAYER = %s. READING DEFAULT.\n", EntityPlayer.tickingPlayer);
++            e.printStackTrace();
+         }
+         // Servett end
+ 
+-- 
+2.20.1
+

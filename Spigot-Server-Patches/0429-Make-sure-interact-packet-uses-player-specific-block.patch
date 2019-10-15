@@ -1,0 +1,70 @@
+From d4739da30cf5431ca09b6e25fed43bc750c9f7e5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 15 Oct 2019 13:56:33 +0200
+Subject: [PATCH] Make sure interact packet uses player specific block
+
+
+diff --git a/src/main/java/net/minecraft/server/PlayerConnection.java b/src/main/java/net/minecraft/server/PlayerConnection.java
+index ae17cdf23..c97e5c00a 100644
+--- a/src/main/java/net/minecraft/server/PlayerConnection.java
++++ b/src/main/java/net/minecraft/server/PlayerConnection.java
+@@ -1342,7 +1342,7 @@ public class PlayerConnection implements PacketListenerPlayIn {
+         MovingObjectPositionBlock movingobjectpositionblock = packetplayinuseitem.c();
+         BlockPosition blockposition = movingobjectpositionblock.getBlockPosition();
+         EnumDirection enumdirection = movingobjectpositionblock.getDirection();
+-        IBlockData clickedBlock = worldserver.getType(blockposition); // Spigot
++        IBlockData clickedBlock = worldserver.getType(blockposition, this.player); // Spigot
+ 
+         this.player.resetIdleTimer();
+         if (blockposition.getY() >= this.minecraftServer.getMaxBuildHeight() - 1 && ((enumdirection == EnumDirection.UP && !(clickedBlock.getBlock() instanceof BlockStepAbstract && clickedBlock.get(BlockStepAbstract.a) == BlockPropertySlabType.BOTTOM)) || blockposition.getY() >= this.minecraftServer.getMaxBuildHeight())) { // Spigot
+diff --git a/src/main/java/net/minecraft/server/PlayerInteractManager.java b/src/main/java/net/minecraft/server/PlayerInteractManager.java
+index c96564a59..eee3f7913 100644
+--- a/src/main/java/net/minecraft/server/PlayerInteractManager.java
++++ b/src/main/java/net/minecraft/server/PlayerInteractManager.java
+@@ -424,7 +424,7 @@ public class PlayerInteractManager {
+     public boolean firedInteract = false;
+     public EnumInteractionResult a(EntityHuman entityhuman, World world, ItemStack itemstack, EnumHand enumhand, MovingObjectPositionBlock movingobjectpositionblock) {
+         BlockPosition blockposition = movingobjectpositionblock.getBlockPosition();
+-        IBlockData iblockdata = world.getType(blockposition);
++        IBlockData iblockdata = world.getType(blockposition, (EntityPlayer) entityhuman); // Servett
+         EnumInteractionResult enuminteractionresult = EnumInteractionResult.PASS;
+         if (iblockdata.isAir()) return enuminteractionresult;
+         boolean cancelledBlock = false;
+diff --git a/src/main/java/net/minecraft/server/World.java b/src/main/java/net/minecraft/server/World.java
+index aa789136d..bf0ae21a3 100644
+--- a/src/main/java/net/minecraft/server/World.java
++++ b/src/main/java/net/minecraft/server/World.java
+@@ -714,7 +714,29 @@ public abstract class World implements IIBlockAccess, GeneratorAccess, AutoClose
+ 
+     @Override
+     public IBlockData getType(BlockPosition blockposition, EntityPlayer tickingPlayer) {
+-        return getType(blockposition);
++        Chunk.PlayerBlockModification playerBlockModification = tickingPlayer.modifiedBlocks.get(blockposition.asLong());
++        if (playerBlockModification != null) {
++            return playerBlockModification.getModifiedBlock();
++        }
++
++        // CraftBukkit start - tree generation
++        if (captureTreeGeneration) {
++            Iterator<CraftBlockState> it = capturedBlockStates.iterator();
++            while (it.hasNext()) {
++                CraftBlockState previous = it.next();
++                if (previous.getPosition().equals(blockposition)) {
++                    return previous.getHandle();
++                }
++            }
++        }
++        // CraftBukkit end
++        if (isOutsideWorld(blockposition)) {
++            return Blocks.VOID_AIR.getBlockData();
++        } else {
++            Chunk chunk = this.getChunkAt(blockposition.getX() >> 4, blockposition.getZ() >> 4);
++
++            return chunk.getType(blockposition);
++        }
+     }
+ 
+     @Override
+-- 
+2.20.1
+

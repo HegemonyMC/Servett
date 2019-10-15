@@ -1,0 +1,109 @@
+From 9090a95d24c431dd63633b7187b01672acb2b966 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 14 Oct 2019 19:26:27 +0200
+Subject: [PATCH] Disable advancements that do not belong to the core namespace
+
+
+diff --git a/src/main/java/net/minecraft/server/AdvancementDataPlayer.java b/src/main/java/net/minecraft/server/AdvancementDataPlayer.java
+index b7f1f39a1..41f76f419 100644
+--- a/src/main/java/net/minecraft/server/AdvancementDataPlayer.java
++++ b/src/main/java/net/minecraft/server/AdvancementDataPlayer.java
+@@ -88,6 +88,10 @@ public class AdvancementDataPlayer {
+         while (iterator.hasNext()) {
+             Advancement advancement = (Advancement) iterator.next();
+ 
++            if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++                continue;
++            }
++
+             this.c(advancement);
+         }
+ 
+@@ -111,6 +115,10 @@ public class AdvancementDataPlayer {
+         while (iterator.hasNext()) {
+             Advancement advancement = (Advancement) iterator.next();
+ 
++            if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++                continue;
++            }
++
+             this.e(advancement);
+         }
+ 
+@@ -122,6 +130,10 @@ public class AdvancementDataPlayer {
+         while (iterator.hasNext()) {
+             Advancement advancement = (Advancement) iterator.next();
+ 
++            if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++                continue;
++            }
++
+             if (advancement.getCriteria().isEmpty()) {
+                 this.grantCriteria(advancement, "");
+                 advancement.d().a(this.player);
+@@ -166,6 +178,9 @@ public class AdvancementDataPlayer {
+                             }
+                             // CraftBukkit end
+                         } else {
++                            if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++                                continue;
++                            }
+                             this.a(advancement, (AdvancementProgress) entry.getValue());
+                         }
+                     }
+@@ -207,6 +222,10 @@ public class AdvancementDataPlayer {
+             Entry<Advancement, AdvancementProgress> entry = (Entry) iterator.next();
+             AdvancementProgress advancementprogress = (AdvancementProgress) entry.getValue();
+ 
++            if (!entry.getKey().getName().namespace.equalsIgnoreCase("core")) {
++                continue;
++            }
++
+             if (advancementprogress.b()) {
+                 map.put(((Advancement) entry.getKey()).getName(), advancementprogress);
+             }
+@@ -319,6 +338,10 @@ public class AdvancementDataPlayer {
+     }
+ 
+     private void c(Advancement advancement) {
++        if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++            return;
++        }
++
+         AdvancementProgress advancementprogress = this.getProgress(advancement);
+ 
+         if (!advancementprogress.isDone()) {
+@@ -345,6 +368,10 @@ public class AdvancementDataPlayer {
+     }
+ 
+     private void d(Advancement advancement) {
++        if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++            return;
++        }
++
+         AdvancementProgress advancementprogress = this.getProgress(advancement);
+         Iterator iterator = advancement.getCriteria().entrySet().iterator();
+ 
+@@ -378,6 +405,9 @@ public class AdvancementDataPlayer {
+ 
+             while (iterator.hasNext()) {
+                 advancement = (Advancement) iterator.next();
++                if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++                    continue;
++                }
+                 if (this.g.contains(advancement)) {
+                     map.put(advancement.getName(), this.data.get(advancement));
+                 }
+@@ -387,6 +417,9 @@ public class AdvancementDataPlayer {
+ 
+             while (iterator.hasNext()) {
+                 advancement = (Advancement) iterator.next();
++                if (!advancement.getName().namespace.equalsIgnoreCase("core")) {
++                    continue;
++                }
+                 if (this.g.contains(advancement)) {
+                     set.add(advancement);
+                 } else {
+-- 
+2.20.1
+

@@ -1,0 +1,22 @@
+From cb3b02070a7a3288a0bca6aa0b81f70081b71654 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 15 Oct 2019 16:36:32 +0200
+Subject: [PATCH] Fix ClassCastException
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index bf1ae0b46..4aafbb50e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -431,7 +431,7 @@ public class CraftEventFactory {
+ 
+         Block blockClicked = null;
+         if (position != null) {
+-            blockClicked = new EventBlock((EntityPlayer) player, craftWorld.getHandle(), position);
++            blockClicked = new EventBlock((EntityPlayer) who, craftWorld.getHandle(), position);
+             // craftWorld.getBlockAt(position.getX(), position.getY(), position.getZ());
+         } else {
+             switch (action) {
+-- 
+2.20.1
+

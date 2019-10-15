@@ -1,4 +1,4 @@
-From 00e838165e60403958d14e6404d726e260239141 Mon Sep 17 00:00:00 2001
+From 515be3cb60e119169d20bb6065728749a26c71ae Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
 Date: Sat, 12 Oct 2019 17:33:12 +0200
 Subject: [PATCH] Make getBlockData fail gracefully

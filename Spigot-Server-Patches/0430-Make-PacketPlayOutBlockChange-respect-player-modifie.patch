@@ -1,0 +1,293 @@
+From d3f85e02a984e75eca834e0fc5f90880ed4bff2b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 15 Oct 2019 14:23:37 +0200
+Subject: [PATCH] Make PacketPlayOutBlockChange respect player modified blocks
+
+
+diff --git a/src/main/java/net/minecraft/server/ItemBucket.java b/src/main/java/net/minecraft/server/ItemBucket.java
+index 91ff811d8..f462df8e0 100644
+--- a/src/main/java/net/minecraft/server/ItemBucket.java
++++ b/src/main/java/net/minecraft/server/ItemBucket.java
+@@ -42,7 +42,7 @@ public class ItemBucket extends Item {
+                         PlayerBucketFillEvent event = CraftEventFactory.callPlayerBucketFillEvent(world, entityhuman, blockposition, blockposition, movingobjectpositionblock.getDirection(), itemstack, dummyFluid.b(), enumhand); // Paper - add enumHand
+ 
+                         if (event.isCancelled()) {
+-                            ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange(world, blockposition)); // SPIGOT-5163 (see PlayerInteractManager)
++                            ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange((EntityPlayer) entityhuman, world, blockposition)); // SPIGOT-5163 (see PlayerInteractManager)
+                             ((EntityPlayer) entityhuman).getBukkitEntity().updateInventory(); // SPIGOT-4541
+                             return new InteractionResultWrapper(EnumInteractionResult.FAIL, itemstack);
+                         }
+@@ -139,7 +139,8 @@ public class ItemBucket extends Item {
+                 if (entityhuman != null) {
+                     PlayerBucketEmptyEvent event = CraftEventFactory.callPlayerBucketEmptyEvent(world, entityhuman, blockposition, clicked, enumdirection, itemstack, enumhand); // Paper - add enumHand
+                     if (event.isCancelled()) {
+-                        ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange(world, blockposition)); // SPIGOT-4238: needed when looking through entity
++                        final PlayerConnection playerConnection = ((EntityPlayer) entityhuman).playerConnection;
++                        ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange(playerConnection.player, world, blockposition)); // SPIGOT-4238: needed when looking through entity
+                         ((EntityPlayer) entityhuman).getBukkitEntity().updateInventory(); // SPIGOT-4541
+                         return false;
+                     }
+diff --git a/src/main/java/net/minecraft/server/ItemStack.java b/src/main/java/net/minecraft/server/ItemStack.java
+index 0e164840f..6c5322e0f 100644
+--- a/src/main/java/net/minecraft/server/ItemStack.java
++++ b/src/main/java/net/minecraft/server/ItemStack.java
+@@ -244,7 +244,7 @@ public final class ItemStack {
+                     // Brute force all possible updates
+                     BlockPosition placedPos = ((CraftBlock) placeEvent.getBlock()).getPosition();
+                     for (EnumDirection dir : EnumDirection.values()) {
+-                        ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange(world, placedPos.shift(dir)));
++                        ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange((EntityPlayer) entityhuman, world, placedPos.shift(dir)));
+                     }
+                 } else {
+                     // Change the stack to its new contents if it hasn't been tampered with.
+diff --git a/src/main/java/net/minecraft/server/Packet.java b/src/main/java/net/minecraft/server/Packet.java
+index 8d0965a05..d79feb28f 100644
+--- a/src/main/java/net/minecraft/server/Packet.java
++++ b/src/main/java/net/minecraft/server/Packet.java
+@@ -17,6 +17,10 @@ public interface Packet<T extends PacketListener> {
+     }
+     // Paper end
+ 
++    // Servett start
++    default void process(PlayerConnection playerConnection) {}
++    // Servett end
++
+     default boolean a() {
+         return false;
+     }
+diff --git a/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java b/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java
+index 68b00a6e4..bbf416fdc 100644
+--- a/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java
++++ b/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java
+@@ -5,13 +5,29 @@ import java.io.IOException;
+ public class PacketPlayOutBlockChange implements Packet<PacketListenerPlayOut> {
+ 
+     private BlockPosition a;
++    private IBlockAccess iblockaccess;
++
+     public IBlockData block;
+ 
+     public PacketPlayOutBlockChange() {}
+ 
+     public PacketPlayOutBlockChange(IBlockAccess iblockaccess, BlockPosition blockposition) {
++        this(null, iblockaccess, blockposition);
++    }
++
++    public PacketPlayOutBlockChange(EntityPlayer player, IBlockAccess iblockaccess, BlockPosition blockposition) {
+         this.a = blockposition;
+-        this.block = iblockaccess.getType(blockposition);
++        this.iblockaccess = iblockaccess;
++        if (player != null) {
++            this.process(player.playerConnection);
++        } else {
++            this.block = iblockaccess.getType(blockposition);
++        }
++    }
++
++    @Override
++    public void process(PlayerConnection playerConnection) {
++        this.block = iblockaccess.getType(a, playerConnection.player);
+     }
+ 
+     @Override
+diff --git a/src/main/java/net/minecraft/server/PlayerConnection.java b/src/main/java/net/minecraft/server/PlayerConnection.java
+index c97e5c00a..a034fb015 100644
+--- a/src/main/java/net/minecraft/server/PlayerConnection.java
++++ b/src/main/java/net/minecraft/server/PlayerConnection.java
+@@ -2,6 +2,7 @@ package net.minecraft.server;
+ 
+ import com.google.common.primitives.Doubles;
+ import com.google.common.primitives.Floats;
++import com.google.gson.internal.$Gson$Preconditions;
+ import com.mojang.brigadier.ParseResults;
+ import com.mojang.brigadier.StringReader;
+ import com.mojang.brigadier.suggestion.Suggestions;
+@@ -1342,7 +1343,7 @@ public class PlayerConnection implements PacketListenerPlayIn {
+         MovingObjectPositionBlock movingobjectpositionblock = packetplayinuseitem.c();
+         BlockPosition blockposition = movingobjectpositionblock.getBlockPosition();
+         EnumDirection enumdirection = movingobjectpositionblock.getDirection();
+-        IBlockData clickedBlock = worldserver.getType(blockposition, this.player); // Spigot
++        IBlockData clickedBlock = worldserver.getType(blockposition, this.player); // Servett > Spigot
+ 
+         this.player.resetIdleTimer();
+         if (blockposition.getY() >= this.minecraftServer.getMaxBuildHeight() - 1 && ((enumdirection == EnumDirection.UP && !(clickedBlock.getBlock() instanceof BlockStepAbstract && clickedBlock.get(BlockStepAbstract.a) == BlockPropertySlabType.BOTTOM)) || blockposition.getY() >= this.minecraftServer.getMaxBuildHeight())) { // Spigot
+@@ -1361,8 +1362,8 @@ public class PlayerConnection implements PacketListenerPlayIn {
+             this.player.playerInteractManager.a(this.player, worldserver, itemstack, enumhand, movingobjectpositionblock);
+         }
+ 
+-        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(worldserver, blockposition));
+-        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(worldserver, blockposition.shift(enumdirection)));
++        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(player, worldserver, blockposition));
++        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(player, worldserver, blockposition.shift(enumdirection)));
+     }
+ 
+     @Override
+@@ -1490,11 +1491,15 @@ public class PlayerConnection implements PacketListenerPlayIn {
+ 
+     }
+ 
++    public void sendPacket(PlayerConnection connection, Packet<?> packet) {
++        this.a(connection, packet, (GenericFutureListener) null);
++    }
++
+     public void sendPacket(Packet<?> packet) {
+-        this.a(packet, (GenericFutureListener) null);
++        this.a(null, packet, (GenericFutureListener) null);
+     }
+ 
+-    public void a(Packet<?> packet, @Nullable GenericFutureListener<? extends Future<? super Void>> genericfuturelistener) {
++    public void a(PlayerConnection playerConnection, Packet<?> packet, @Nullable GenericFutureListener<? extends Future<? super Void>> genericfuturelistener) {
+         if (packet instanceof PacketPlayOutChat) {
+             PacketPlayOutChat packetplayoutchat = (PacketPlayOutChat) packet;
+             EnumChatVisibility enumchatvisibility = this.player.getChatFlags();
+@@ -1508,6 +1513,10 @@ public class PlayerConnection implements PacketListenerPlayIn {
+             }
+         }
+ 
++        // Servett start
++        packet.process(playerConnection);
++        // Servett end
++
+         // CraftBukkit start
+         if (packet == null || this.processedDisconnect) { // Spigot
+             return;
+diff --git a/src/main/java/net/minecraft/server/PlayerInteractManager.java b/src/main/java/net/minecraft/server/PlayerInteractManager.java
+index eee3f7913..1c046ece4 100644
+--- a/src/main/java/net/minecraft/server/PlayerInteractManager.java
++++ b/src/main/java/net/minecraft/server/PlayerInteractManager.java
+@@ -138,10 +138,10 @@ public class PlayerInteractManager {
+                     // Let the client know the block still exists
+                     // Paper start - brute force neighbor blocks for any attached blocks
+                     for (EnumDirection dir : EnumDirection.values()) {
+-                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(world, blockposition.shift(dir)));
++                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(player, world, blockposition.shift(dir)));
+                     }
+                     // Paper end
+-                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
++                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(player, this.world, blockposition));
+                     // Update any tile entity data for this block
+                     TileEntity tileentity = this.world.getTileEntity(blockposition);
+                     if (tileentity != null) {
+@@ -178,10 +178,10 @@ public class PlayerInteractManager {
+                     if (data.getBlock() instanceof BlockDoor) {
+                         // For some reason *BOTH* the bottom/top part have to be marked updated.
+                         boolean bottom = data.get(BlockDoor.HALF) == BlockPropertyDoubleBlockHalf.LOWER;
+-                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
+-                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, bottom ? blockposition.up() : blockposition.down()));
++                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition));
++                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, bottom ? blockposition.up() : blockposition.down()));
+                     } else if (data.getBlock() instanceof BlockTrapdoor) {
+-                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
++                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition));
+                     }
+                 } else if (!iblockdata.isAir()) {
+                     iblockdata.attack(this.world, blockposition, this.player);
+@@ -193,7 +193,7 @@ public class PlayerInteractManager {
+                 if (event.useItemInHand() == Event.Result.DENY) {
+                     // If we 'insta destroyed' then the client needs to be informed.
+                     if (f > 1.0f) {
+-                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
++                        this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition));
+                     }
+                     return;
+                 }
+@@ -201,7 +201,7 @@ public class PlayerInteractManager {
+ 
+                 if (blockEvent.isCancelled()) {
+                     // Let the client know the block still exists
+-                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
++                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition));
+                     return;
+                 }
+ 
+@@ -218,7 +218,7 @@ public class PlayerInteractManager {
+                     int j = (int) (f * 10.0F);
+ 
+                     this.world.a(this.player.getId(), blockposition, j);
+-                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition)); // Paper - fixes MC-156852
++                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition)); // Paper - fixes MC-156852
+                     this.player.playerConnection.sendPacket(new PacketPlayOutBlockBreak(blockposition, this.world.getType(blockposition), packetplayinblockdig_enumplayerdigtype, true));
+                     this.l = j;
+                 }
+@@ -262,7 +262,7 @@ public class PlayerInteractManager {
+         if (this.breakBlock(blockposition)) {
+             this.player.playerConnection.sendPacket(new PacketPlayOutBlockBreak(blockposition, this.world.getType(blockposition), packetplayinblockdig_enumplayerdigtype, true));
+         } else {
+-            this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition)); // CraftBukkit - SPIGOT-5196
++            this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition)); // CraftBukkit - SPIGOT-5196
+         }
+ 
+     }
+@@ -280,7 +280,7 @@ public class PlayerInteractManager {
+             // Tell client the block is gone immediately then process events
+             // Don't tell the client if its a creative sword break because its not broken!
+             if (world.getTileEntity(blockposition) == null && !isSwordNoBreak) {
+-                PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(this.world, blockposition);
++                PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(this.player, this.world, blockposition);
+                 packet.block = Blocks.AIR.getBlockData();
+                 this.player.playerConnection.sendPacket(packet);
+             }
+@@ -307,11 +307,11 @@ public class PlayerInteractManager {
+                     return false;
+                 }
+                 // Let the client know the block still exists
+-                this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
++                this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition));
+ 
+                 // Brute force all possible updates
+                 for (EnumDirection dir : EnumDirection.values()) {
+-                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(world, blockposition.shift(dir)));
++                    this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, world, blockposition.shift(dir)));
+                 }
+ 
+                 // Update any tile entity data for this block
+@@ -446,7 +446,7 @@ public class PlayerInteractManager {
+             // If we denied a door from opening, we need to send a correcting update to the client, as it already opened the door.
+             if (iblockdata.getBlock() instanceof BlockDoor) {
+                 boolean bottom = iblockdata.get(BlockDoor.HALF) == BlockPropertyDoubleBlockHalf.LOWER;
+-                ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange(world, bottom ? blockposition.up() : blockposition.down()));
++                ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutBlockChange(((EntityPlayer) entityhuman), world, bottom ? blockposition.up() : blockposition.down()));
+             } else if (iblockdata.getBlock() instanceof BlockCake) {
+                 ((EntityPlayer) entityhuman).getBukkitEntity().sendHealthUpdate(); // SPIGOT-1341 - reset health for cake
+             // Paper start  - extend Player Interact cancellation // TODO: consider merging this into the extracted method
+@@ -456,11 +456,11 @@ public class PlayerInteractManager {
+                     ((EntityPlayer) entityhuman).playerConnection.sendPacket(new PacketPlayOutCloseWindow());
+             } else if (iblockdata.getBlock() instanceof BlockFlowerPot) {
+                 // Send a block change to air and then send back the correct block, just to make the client happy
+-                PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(this.world, blockposition);
++                PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange((EntityPlayer) entityhuman, this.world, blockposition);
+                 packet.block = Blocks.AIR.getBlockData();
+                 this.player.playerConnection.sendPacket(packet);
+ 
+-                this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.world, blockposition));
++                this.player.playerConnection.sendPacket(new PacketPlayOutBlockChange(this.player, this.world, blockposition));
+ 
+                 TileEntity tileentity = this.world.getTileEntity(blockposition);
+                 if (tileentity != null) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index e920545df..c433e57ea 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -635,7 +635,8 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+     public void sendBlockChange(Location loc, Material material, byte data) {
+         if (getHandle().playerConnection == null) return;
+ 
+-        PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(((CraftWorld) loc.getWorld()).getHandle(), new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
++        PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(
++            getHandle(), ((CraftWorld) loc.getWorld()).getHandle(), new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
+ 
+         packet.block = CraftMagicNumbers.getBlock(material, data);
+         getHandle().playerConnection.sendPacket(packet);
+@@ -645,7 +646,8 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+     public void sendBlockChange(Location loc, BlockData block) {
+         if (getHandle().playerConnection == null) return;
+ 
+-        PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(((CraftWorld) loc.getWorld()).getHandle(), new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
++        PacketPlayOutBlockChange packet = new PacketPlayOutBlockChange(getHandle(),
++            ((CraftWorld) loc.getWorld()).getHandle(), new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
+ 
+         packet.block = ((CraftBlockData) block).getState();
+         getHandle().playerConnection.sendPacket(packet);
+-- 
+2.20.1
+

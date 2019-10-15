@@ -1,0 +1,37 @@
+From d5e4e300f4d8f9997e92094366be9012165c1471 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 15 Oct 2019 14:30:19 +0200
+Subject: [PATCH] ...
+
+
+diff --git a/src/main/java/net/minecraft/server/EntityPlayer.java b/src/main/java/net/minecraft/server/EntityPlayer.java
+index 5fdcb17c5..62072b29a 100644
+--- a/src/main/java/net/minecraft/server/EntityPlayer.java
++++ b/src/main/java/net/minecraft/server/EntityPlayer.java
+@@ -624,7 +624,7 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
+                 ichatbasecomponent = org.bukkit.craftbukkit.util.CraftChatMessage.fromStringOrNull(deathMessage);
+             }
+ 
+-            this.playerConnection.a((Packet) (new PacketPlayOutCombatEvent(this.getCombatTracker(), PacketPlayOutCombatEvent.EnumCombatEventType.ENTITY_DIED, ichatbasecomponent)), (future) -> {
++            this.playerConnection.a(playerConnection, (Packet) (new PacketPlayOutCombatEvent(this.getCombatTracker(), PacketPlayOutCombatEvent.EnumCombatEventType.ENTITY_DIED, ichatbasecomponent)), (future) -> {
+                 if (!future.isSuccess()) {
+                     boolean flag1 = true;
+                     String s = ichatbasecomponent.a(256);
+diff --git a/src/main/java/net/minecraft/server/PlayerConnection.java b/src/main/java/net/minecraft/server/PlayerConnection.java
+index a034fb015..489437d15 100644
+--- a/src/main/java/net/minecraft/server/PlayerConnection.java
++++ b/src/main/java/net/minecraft/server/PlayerConnection.java
+@@ -1499,6 +1499,10 @@ public class PlayerConnection implements PacketListenerPlayIn {
+         this.a(null, packet, (GenericFutureListener) null);
+     }
+ 
++    public void a(Packet<?> packet, @Nullable GenericFutureListener<? extends Future<? super Void>> genericfuturelistener) {
++        a(this, packet, genericfuturelistener);
++    }
++
+     public void a(PlayerConnection playerConnection, Packet<?> packet, @Nullable GenericFutureListener<? extends Future<? super Void>> genericfuturelistener) {
+         if (packet instanceof PacketPlayOutChat) {
+             PacketPlayOutChat packetplayoutchat = (PacketPlayOutChat) packet;
+-- 
+2.20.1
+

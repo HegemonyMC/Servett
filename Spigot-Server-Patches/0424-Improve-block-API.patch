@@ -1,4 +1,4 @@
-From ff772bd954c0d94cec4c5653fbeaa532ae541814 Mon Sep 17 00:00:00 2001
+From 35db8102185b9d6da61fbdca0402f618a19a65d8 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
 Date: Fri, 11 Oct 2019 16:13:28 +0200
 Subject: [PATCH] Improve block API

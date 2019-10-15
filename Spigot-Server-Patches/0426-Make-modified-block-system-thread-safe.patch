@@ -1,0 +1,243 @@
+From 266ea3e438b181a270f349a75f25a5942e529b2b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Mon, 14 Oct 2019 19:18:22 +0200
+Subject: [PATCH] Make modified block system thread safe
+
+
+diff --git a/src/main/java/net/minecraft/server/Chunk.java b/src/main/java/net/minecraft/server/Chunk.java
+index b942ce196..104cdeab1 100644
+--- a/src/main/java/net/minecraft/server/Chunk.java
++++ b/src/main/java/net/minecraft/server/Chunk.java
+@@ -229,14 +229,18 @@ public class Chunk implements IChunkAccess {
+     public final IBlockData getBlockData(final int x, final int y, final int z) {
+         // Servett start - Allow for player modified blocks
+         try {
+-            if (EntityPlayer.tickingPlayer != null && EntityPlayer.tickingPlayer.modifiedBlocks != null) {
+-                final PlayerBlockModification blockModification = EntityPlayer.tickingPlayer.modifiedBlocks.get(BlockPosition.a(x, y, z));
+-                if (blockModification != null) {
+-                    return blockModification.getModifiedBlock();
++            synchronized (world.tickingPlayerLock) {
++                if (world.tickingPlayer != null
++                    && world.tickingPlayer.modifiedBlocks != null) {
++                    final PlayerBlockModification blockModification =
++                        world.tickingPlayer.modifiedBlocks.get(BlockPosition.a(x, y, z));
++                    if (blockModification != null) {
++                        return blockModification.getModifiedBlock();
++                    }
+                 }
+             }
+         } catch (final Exception e) {
+-            System.err.printf("FAILED TO READ PLAYER SPECIFIC BLOCK. TICKING PLAYER = %s. READING DEFAULT.\n", EntityPlayer.tickingPlayer);
++            System.err.printf("FAILED TO READ PLAYER SPECIFIC BLOCK. TICKING PLAYER = %s. READING DEFAULT.\n", world.tickingPlayer);
+             e.printStackTrace();
+         }
+         // Servett end
+diff --git a/src/main/java/net/minecraft/server/EntityPlayer.java b/src/main/java/net/minecraft/server/EntityPlayer.java
+index f9ffb4796..0df3210a4 100644
+--- a/src/main/java/net/minecraft/server/EntityPlayer.java
++++ b/src/main/java/net/minecraft/server/EntityPlayer.java
+@@ -40,7 +40,6 @@ import org.bukkit.inventory.MainHand;
+ 
+ public class EntityPlayer extends EntityHuman implements ICrafting {
+ 
+-    public static EntityPlayer tickingPlayer; // Servett
+     private static final Logger LOGGER = LogManager.getLogger();
+     public final Map<Long, Chunk.PlayerBlockModification> modifiedBlocks = new HashMap<>(); // Servett
+     public String locale = null; // CraftBukkit - lowercase // Paper - default to null
+@@ -359,73 +358,75 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
+ 
+     @Override
+     public void tick() {
+-        tickingPlayer = this; // Servett
++        synchronized (world.tickingPlayerLock) {
++            world.tickingPlayer = this; // Servett
+ 
+-        // CraftBukkit start
+-        if (this.joining) {
+-            this.joining = false;
+-        }
+-        // CraftBukkit end
+-        this.playerInteractManager.a();
+-        --this.invulnerableTicks;
+-        if (this.noDamageTicks > 0) {
+-            --this.noDamageTicks;
+-        }
++            // CraftBukkit start
++            if (this.joining) {
++                this.joining = false;
++            }
++            // CraftBukkit end
++            this.playerInteractManager.a();
++            --this.invulnerableTicks;
++            if (this.noDamageTicks > 0) {
++                --this.noDamageTicks;
++            }
+ 
+-        // Paper start - Configurable container update tick rate
+-        if (--containerUpdateDelay <= 0) {
+-            this.activeContainer.c();
+-            containerUpdateDelay = world.paperConfig.containerUpdateTickRate;
+-        }
+-        // Paper end
+-        if (!this.world.isClientSide && !this.activeContainer.canUse(this)) {
+-            this.closeInventory(org.bukkit.event.inventory.InventoryCloseEvent.Reason.CANT_USE); // Paper
+-            this.activeContainer = this.defaultContainer;
+-        }
++            // Paper start - Configurable container update tick rate
++            if (--containerUpdateDelay <= 0) {
++                this.activeContainer.c();
++                containerUpdateDelay = world.paperConfig.containerUpdateTickRate;
++            }
++            // Paper end
++            if (!this.world.isClientSide && !this.activeContainer.canUse(this)) {
++                this.closeInventory(org.bukkit.event.inventory.InventoryCloseEvent.Reason.CANT_USE); // Paper
++                this.activeContainer = this.defaultContainer;
++            }
+ 
+-        while (!this.removeQueue.isEmpty()) {
+-            int i = Math.min(this.removeQueue.size(), Integer.MAX_VALUE);
+-            int[] aint = new int[i];
+-            //Iterator<Integer> iterator = this.removeQueue.iterator(); // Paper
+-            int j = 0;
++            while (!this.removeQueue.isEmpty()) {
++                int i = Math.min(this.removeQueue.size(), Integer.MAX_VALUE);
++                int[] aint = new int[i];
++                //Iterator<Integer> iterator = this.removeQueue.iterator(); // Paper
++                int j = 0;
+ 
+-            // Paper start
++                // Paper start
+             /* while (iterator.hasNext() && j < i) {
+                 aint[j++] = (Integer) iterator.next();
+                 iterator.remove();
+             } */
+ 
+-            Integer integer;
+-            while (j < i && (integer = this.removeQueue.poll()) != null) {
+-                aint[j++] = integer.intValue();
+-            }
+-            // Paper end
++                Integer integer;
++                while (j < i && (integer = this.removeQueue.poll()) != null) {
++                    aint[j++] = integer.intValue();
++                }
++                // Paper end
+ 
+-            this.playerConnection.sendPacket(new PacketPlayOutEntityDestroy(aint));
+-        }
++                this.playerConnection.sendPacket(new PacketPlayOutEntityDestroy(aint));
++            }
+ 
+-        Entity entity = this.getSpecatorTarget();
++            Entity entity = this.getSpecatorTarget();
+ 
+-        if (entity != this) {
+-            if (entity.isAlive()) {
+-                this.setLocation(entity.locX, entity.locY, entity.locZ, entity.yaw, entity.pitch);
+-                this.getWorldServer().getChunkProvider().movePlayer(this);
+-                if (this.isSneaking()) {
++            if (entity != this) {
++                if (entity.isAlive()) {
++                    this.setLocation(entity.locX, entity.locY, entity.locZ, entity.yaw, entity.pitch);
++                    this.getWorldServer().getChunkProvider().movePlayer(this);
++                    if (this.isSneaking()) {
++                        this.setSpectatorTarget(this);
++                    }
++                } else {
+                     this.setSpectatorTarget(this);
+                 }
+-            } else {
+-                this.setSpectatorTarget(this);
+             }
+-        }
+ 
+-        CriterionTriggers.w.a(this);
+-        if (this.cr != null) {
+-            CriterionTriggers.u.a(this, this.cr, this.ticksLived - this.cs);
+-        }
++            CriterionTriggers.w.a(this);
++            if (this.cr != null) {
++                CriterionTriggers.u.a(this, this.cr, this.ticksLived - this.cs);
++            }
+ 
+-        this.advancementDataPlayer.b(this);
++            this.advancementDataPlayer.b(this);
+ 
+-        tickingPlayer = null; // Servett
++            world.tickingPlayer = null; // Servett
++        }
+     }
+ 
+     public void playerTick() {
+diff --git a/src/main/java/net/minecraft/server/IWorldReader.java b/src/main/java/net/minecraft/server/IWorldReader.java
+index a25736e23..ce49df0d7 100644
+--- a/src/main/java/net/minecraft/server/IWorldReader.java
++++ b/src/main/java/net/minecraft/server/IWorldReader.java
+@@ -106,6 +106,12 @@ public interface IWorldReader extends IIBlockAccess {
+         return this.b(entity, axisalignedbb, Collections.emptySet());
+     }
+ 
++    // Servett start
++    default boolean getCubesX(Entity entity, AxisAlignedBB axisalignedbb) {
++        return this.b(entity, axisalignedbb, Collections.emptySet());
++    }
++    // Servett end
++
+     default boolean b(@Nullable Entity entity, AxisAlignedBB axisalignedbb, Set<Entity> set) {
+         return this.c(entity, axisalignedbb, set).allMatch(VoxelShape::isEmpty);
+     }
+diff --git a/src/main/java/net/minecraft/server/World.java b/src/main/java/net/minecraft/server/World.java
+index 9d29fc8ca..b2a96882a 100644
+--- a/src/main/java/net/minecraft/server/World.java
++++ b/src/main/java/net/minecraft/server/World.java
+@@ -122,6 +122,11 @@ public abstract class World implements IIBlockAccess, GeneratorAccess, AutoClose
+     final java.lang.Object stuctureLock = new Object();
+     // Paper end
+ 
++    // Servett start
++    public EntityPlayer tickingPlayer;
++    public final java.lang.Object tickingPlayerLock = new Object();
++    // Servett end
++
+     public CraftWorld getWorld() {
+         return this.world;
+     }
+@@ -950,7 +955,7 @@ public abstract class World implements IIBlockAccess, GeneratorAccess, AutoClose
+     @Override
+     public boolean getCubes(@Nullable Entity entity, AxisAlignedBB axisAlignedBB) {
+         if (entity instanceof EntityArmorStand && !entity.world.paperConfig.armorStandEntityLookups) return false;
+-        return GeneratorAccess.super.getCubes(entity, axisAlignedBB);
++        return getCubesX(entity, axisAlignedBB);
+     }
+     // Paper end
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+index cc4de159f..3b62fedd5 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+@@ -202,13 +202,16 @@ public class CraftBlock implements Block {
+ 
+     @Override
+     public BlockData getPlayerKnownBlock(Player player) {
+-        final EntityPlayer oldPlayer = EntityPlayer.tickingPlayer;
++        final WorldServer worldServer = getCraftWorld().getHandle();
+         BlockData material;
+-        try {
+-            EntityPlayer.tickingPlayer = ((CraftPlayer) player).getHandle();
+-            material = getBlockData();
+-        } finally {
+-            EntityPlayer.tickingPlayer = oldPlayer;
++        synchronized (worldServer.tickingPlayerLock) {
++            final EntityPlayer oldPlayer = worldServer.tickingPlayer;
++            try {
++                worldServer.tickingPlayer = ((CraftPlayer) player).getHandle();
++                material = getBlockData();
++            } finally {
++                worldServer.tickingPlayer = oldPlayer;
++            }
+         }
+         return material;
+     }
+-- 
+2.20.1
+

@@ -1,0 +1,37 @@
+From a7b77462d65b405da073b5c95ca1179d14793a78 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 15 Oct 2019 14:37:13 +0200
+Subject: [PATCH] Make Packet#process work in cases where Bukkit is behaving
+ like a dumdum
+
+
+diff --git a/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java b/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java
+index bbf416fdc..1a6f5a772 100644
+--- a/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java
++++ b/src/main/java/net/minecraft/server/PacketPlayOutBlockChange.java
+@@ -27,6 +27,9 @@ public class PacketPlayOutBlockChange implements Packet<PacketListenerPlayOut> {
+ 
+     @Override
+     public void process(PlayerConnection playerConnection) {
++        if (playerConnection == null || playerConnection.player == null) {
++            return;
++        }
+         this.block = iblockaccess.getType(a, playerConnection.player);
+     }
+ 
+diff --git a/src/main/java/net/minecraft/server/PlayerConnection.java b/src/main/java/net/minecraft/server/PlayerConnection.java
+index 489437d15..8e3708402 100644
+--- a/src/main/java/net/minecraft/server/PlayerConnection.java
++++ b/src/main/java/net/minecraft/server/PlayerConnection.java
+@@ -1518,7 +1518,7 @@ public class PlayerConnection implements PacketListenerPlayIn {
+         }
+ 
+         // Servett start
+-        packet.process(playerConnection);
++        packet.process(playerConnection == null ? this : playerConnection);
+         // Servett end
+ 
+         // CraftBukkit start
+-- 
+2.20.1
+

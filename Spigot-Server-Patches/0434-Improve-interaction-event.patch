@@ -1,0 +1,164 @@
+From 3237c44bdfae840bb2b1b7b4edd43cdcd7b4545e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alexander=20S=C3=B6derberg?= <sauilitired@gmail.com>
+Date: Tue, 15 Oct 2019 16:32:08 +0200
+Subject: [PATCH] Improve interaction event
+
+
+diff --git a/src/main/java/net/minecraft/server/PlayerConnection.java b/src/main/java/net/minecraft/server/PlayerConnection.java
+index 8d71f9bd0..8d1f5e954 100644
+--- a/src/main/java/net/minecraft/server/PlayerConnection.java
++++ b/src/main/java/net/minecraft/server/PlayerConnection.java
+@@ -1520,7 +1520,9 @@ public class PlayerConnection implements PacketListenerPlayIn {
+         // Servett start: Check that we're not sending packets we shouldn't send
+         if (packet instanceof PacketPlayOutBlockBreak) {
+             PacketPlayOutBlockBreak packetPlayOutBlockBreak = (PacketPlayOutBlockBreak) packet;
+-            if (player.modifiedBlocks.containsKey(packetPlayOutBlockBreak.c.asLong())) {
++            Chunk.PlayerBlockModification playerBlockModification = player.modifiedBlocks.get(packetPlayOutBlockBreak.c.asLong());
++            if (playerBlockModification != null &&
++                playerBlockModification.getModifiedBlock().getMaterial() != Material.AIR) {
+                 return;
+             }
+         }
+diff --git a/src/main/java/net/minecraft/server/PlayerInteractManager.java b/src/main/java/net/minecraft/server/PlayerInteractManager.java
+index 1c046ece4..98aeab14e 100644
+--- a/src/main/java/net/minecraft/server/PlayerInteractManager.java
++++ b/src/main/java/net/minecraft/server/PlayerInteractManager.java
+@@ -291,7 +291,7 @@ public class PlayerInteractManager {
+             event.setCancelled(isSwordNoBreak);
+ 
+             // Calculate default block experience
+-            IBlockData nmsData = this.world.getType(blockposition);
++            IBlockData nmsData = this.world.getType(blockposition, player);
+             Block nmsBlock = nmsData.getBlock();
+ 
+             ItemStack itemstack = this.player.getEquipment(EnumItemSlot.MAINHAND);
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+index 3b62fedd5..9cf5f201d 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBlock.java
+@@ -18,6 +18,7 @@ import net.minecraft.server.IBlockData;
+ import net.minecraft.server.IRegistry;
+ import net.minecraft.server.MinecraftKey;
+ import net.minecraft.server.MovingObjectPosition;
++import net.minecraft.server.PacketPlayOutBlockBreak;
+ import net.minecraft.server.PacketPlayOutBlockChange;
+ import net.minecraft.server.RayTrace;
+ import net.minecraft.server.TileEntity;
+@@ -54,8 +55,9 @@ import org.bukkit.util.RayTraceResult;
+ import org.bukkit.util.Vector;
+ 
+ public class CraftBlock implements Block {
+-    private final net.minecraft.server.GeneratorAccess world;
+-    private final BlockPosition position;
++
++    public final net.minecraft.server.GeneratorAccess world;
++    public final BlockPosition position;
+ 
+     public CraftBlock(GeneratorAccess world, BlockPosition position) {
+         this.world = world;
+@@ -146,13 +148,14 @@ public class CraftBlock implements Block {
+         world.setTypeAndData(position, CraftMagicNumbers.getBlock(getType(), data), flag);
+     }
+ 
+-    private IBlockData getData0() {
++    public IBlockData getData0() {
+         return world.getType(position);
+     }
+ 
+     @Override
+     public byte getData() {
+-        IBlockData blockData = world.getType(position);
++        // IBlockData blockData = world.getType(position);
++        IBlockData blockData = getData0();
+         return CraftMagicNumbers.toLegacyData(blockData);
+     }
+ 
+@@ -247,7 +250,7 @@ public class CraftBlock implements Block {
+ 
+     @Override
+     public Material getType() {
+-        return CraftMagicNumbers.getMaterial(world.getType(position).getBlock());
++        return CraftMagicNumbers.getMaterial(getData0().getBlock());
+     }
+ 
+     @Override
+@@ -265,7 +268,6 @@ public class CraftBlock implements Block {
+         return (byte) world.getBrightness(EnumSkyBlock.BLOCK, position);
+     }
+ 
+-
+     public Block getFace(final BlockFace face) {
+         return getRelative(face, 1);
+     }
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/EventBlock.java b/src/main/java/org/bukkit/craftbukkit/block/EventBlock.java
+new file mode 100644
+index 000000000..291069512
+--- /dev/null
++++ b/src/main/java/org/bukkit/craftbukkit/block/EventBlock.java
+@@ -0,0 +1,41 @@
++package org.bukkit.craftbukkit.block;
++
++import net.minecraft.server.BlockPosition;
++import net.minecraft.server.EntityPlayer;
++import net.minecraft.server.GeneratorAccess;
++import net.minecraft.server.IBlockData;
++import org.bukkit.Material;
++import org.bukkit.block.Block;
++import org.bukkit.block.data.BlockData;
++import org.bukkit.craftbukkit.block.CraftBlock;
++import org.bukkit.craftbukkit.block.data.CraftBlockData;
++import org.bukkit.craftbukkit.util.CraftMagicNumbers;
++
++public class EventBlock extends CraftBlock {
++
++    public final EntityPlayer owner;
++
++    public EventBlock(EntityPlayer owner, GeneratorAccess world, BlockPosition position) {
++        super(world, position);
++        this.owner = owner;
++    }
++
++    @Override
++    public BlockData getBlockData() {
++        return CraftBlockData.fromData(world.getType(position, owner));
++    }
++
++    @Override
++    public Material getType() {
++        return CraftMagicNumbers.getMaterial(world.getType(position, owner).getBlock());
++    }
++
++    @Override public IBlockData getData0() {
++        return world.getType(position, owner);
++    }
++
++    @Override public IBlockData getNMS() {
++        return getData0();
++    }
++
++}
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index e73e391d1..bf1ae0b46 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -79,6 +79,7 @@ import org.bukkit.craftbukkit.CraftStatistic;
+ import org.bukkit.craftbukkit.CraftWorld;
+ import org.bukkit.craftbukkit.block.CraftBlock;
+ import org.bukkit.craftbukkit.block.CraftBlockState;
++import org.bukkit.craftbukkit.block.EventBlock;
+ import org.bukkit.craftbukkit.block.data.CraftBlockData;
+ import org.bukkit.craftbukkit.entity.CraftEntity;
+ import org.bukkit.craftbukkit.entity.CraftLivingEntity;
+@@ -430,7 +431,8 @@ public class CraftEventFactory {
+ 
+         Block blockClicked = null;
+         if (position != null) {
+-            blockClicked = craftWorld.getBlockAt(position.getX(), position.getY(), position.getZ());
++            blockClicked = new EventBlock((EntityPlayer) player, craftWorld.getHandle(), position);
++            // craftWorld.getBlockAt(position.getX(), position.getY(), position.getZ());
+         } else {
+             switch (action) {
+                 case LEFT_CLICK_BLOCK:
+-- 
+2.20.1
+
